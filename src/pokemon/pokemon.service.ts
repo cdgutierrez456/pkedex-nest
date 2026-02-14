@@ -22,10 +22,7 @@ export class PokemonService {
       const pokemon = await this.pokemonModel.create(createPokemonDto)
       return pokemon;
     } catch (error) {
-      if (error.code === 1100) {
-        throw new BadRequestException('Pokemon exist in DB')
-      }
-      throw new InternalServerErrorException("Can't create Pokemon")
+      this.handleExceptions(error)
     }
 
   }
@@ -35,37 +32,49 @@ export class PokemonService {
   }
 
   async findOne(term: string) {
-
     let pokemon: Pokemon | undefined;
-
     if (!isNaN(+term)) {
       const responsePok = await this.pokemonModel.findOne({ no: +term })
       if (responsePok) pokemon = responsePok;
     }
-
     // MongoID
     if (!pokemon && isValidObjectId(term)) {
       const responsePok = await this.pokemonModel.findById(term)
       if (responsePok) pokemon = responsePok;
     }
-
     // Name
     if (!pokemon) {
       const responsePok = await this.pokemonModel.findOne({ name: term.toLowerCase().trim() })
       if (responsePok) pokemon = responsePok
     }
-
     if (!pokemon)
       throw new NotFoundException(`Pokemon with id, name or no "${term}" not found`)
 
     return pokemon;
   }
 
-  update(id: number, updatePokemonDto: UpdatePokemonDto) {
-    return `This action updates a #${id} pokemon`;
+  async update(term: string, updatePokemonDto: UpdatePokemonDto) {
+    const pokemon = await this.findOne(term)
+    if (updatePokemonDto.name)
+      updatePokemonDto.name = updatePokemonDto.name.toLowerCase()
+
+    try {
+      await pokemon.updateOne(updatePokemonDto, { new: true })
+      return { ...pokemon.toJSON(), ...updatePokemonDto };
+    } catch (error) {
+      this.handleExceptions(error)
+    }
   }
 
   remove(id: number) {
     return `This action removes a #${id} pokemon`;
   }
+
+  private handleExceptions(error: any) {
+    if (error.code === 1100) {
+      throw new BadRequestException('Pokemon existed')
+    }
+    throw new InternalServerErrorException("Can't resolve Database Query")
+  }
+
 }
