@@ -75,6 +75,14 @@ export class PokemonService {
     return;
   }
 
+  async removeAll() {
+    await this.pokemonModel.deleteMany({})
+  }
+
+  async createMany(pokemons: CreatePokemonDto[]) {
+    await this.pokemonModel.insertMany(pokemons)
+  }
+
   private handleExceptions(error: any) {
     if (error.code === 1100) {
       throw new BadRequestException('Pokemon existed')
